@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONVERT</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.css">
+
+    <link rel="stylesheet" href="assets/vendors/toastify/toastify.css">
+    <link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
+    <link href="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="assets/css/app.css">
+</head>
+
+<body>
+
+    <div class="container text-center">
+        <div class="row">
+            <div class="col-12 col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">Convert .wav to .bin</h5>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-body">
+                            <input type="file" class="multiple-files-filepond" required multiple
+                                data-max-file-size="2MB" data-max-files="12" multiple>
+                            <button class="btn btn-primary" id="convertBtn">Convert to BIN</button>
+                            <button class="btn btn-success" id="downloadBtn" disabled>Download BIN</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+
+    <!-- filepond validation -->
+    <script
+        src="https://unpkg.com/filepond-plugin-file-validate-size/dist/filepond-plugin-file-validate-size.js"></script>
+    <script
+        src="https://unpkg.com/filepond-plugin-file-validate-type/dist/filepond-plugin-file-validate-type.js"></script>
+
+    <!-- image editor -->
+    <script
+        src="https://unpkg.com/filepond-plugin-image-exif-orientation/dist/filepond-plugin-image-exif-orientation.js"></script>
+    <script src="https://unpkg.com/filepond-plugin-image-crop/dist/filepond-plugin-image-crop.js"></script>
+    <script src="https://unpkg.com/filepond-plugin-image-filter/dist/filepond-plugin-image-filter.js"></script>
+    <script src="https://unpkg.com/filepond-plugin-image-preview/dist/filepond-plugin-image-preview.js"></script>
+    <script src="https://unpkg.com/filepond-plugin-image-resize/dist/filepond-plugin-image-resize.js"></script>
+
+    <!-- toastify -->
+    <script src="assets/vendors/toastify/toastify.js"></script>
+
+    <!-- filepond -->
+    <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
+    <script>
+        // ลงทะเบียนปลั๊กอินที่ต้องการ...
+        FilePond.registerPlugin(
+            // ตรวจสอบขนาดของไฟล์...
+            FilePondPluginFileValidateSize,
+            // ตรวจสอบประเภทของไฟล์...
+            FilePondPluginFileValidateType,
+
+            // คำนวณและเพิ่มข้อมูลการตัดต่อขึ้นมาตามขนาดของรูปภาพและอัตราส่วนการตัดต่อที่ตั้ง...
+            FilePondPluginImageCrop,
+            // ดูตัวอย่างไฟล์ประเภทรูปภาพ...
+            FilePondPluginImagePreview,
+            // กรองไฟล์ประเภทรูปภาพ
+            FilePondPluginImageFilter,
+            // แก้ไขการวางตำแหน่งของรูปภาพบนโทรศัพท์มือถือ...
+            FilePondPluginImageExifOrientation,
+            // คำนวณและเพิ่มข้อมูลการปรับขนาด...
+            FilePondPluginImageResize,
+        );
+
+        // Filepond: Multiple Files
+        const filepond = FilePond.create(document.querySelector('.multiple-files-filepond'), {
+            allowImagePreview: false,
+            allowMultiple: true,
+            allowFileEncode: false,
+            required: false
+        });
+
+        // รับการอ้างอิงไปยังปุ่ม Convert และ Download
+        const convertBtn = document.getElementById('convertBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // ตั้งค่าตัวฟังก์ชันสำหรับปุ่ม Convert
+        convertBtn.addEventListener('click', async () => {
+            // รับไฟล์จาก FilePond
+            const files = filepond.getFiles();
+
+            // ดำเนินการแปลง (คุณต้องดำเนินการโดยใช้ฟังก์ชันนี้)
+            const binData = await convertFilesToBin(files);
+
+            // เปิดใช้งานปุ่ม Download
+            downloadBtn.disabled = false;
+
+            // ตั้งค่าตัวฟังก์ชันสำหรับปุ่ม Download
+            downloadBtn.addEventListener('click', () => {
+                // สร้าง Blob จากข้อมูลที่เป็นไบนารี
+                const blob = new Blob([binData], { type: 'application/octet-stream' });
+
+                // สร้างลิงก์ดาวน์โหลด
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'converted.bin';
+
+                // จำลองคลิกเพื่อเริ่มดาวน์โหลด
+                link.click();
+            });
+
+            // แสดงข้อความสำเร็จ
+            Toastify({
+                text: 'การแปลงสำเร็จ!',
+                duration: 3000,
+                gravity: 'bottom', // bottom-left, bottom-center, bottom-right, top-left, top-center, top-right
+                position: 'center', // left, center, right
+                backgroundColor: 'green',
+            }).showToast();
+        });
+
+        // ฟังก์ชันสำหรับการแปลงไฟล์เป็นไบนารี
+        async function convertFilesToBin(files) {
+            // สร้าง Promise สำหรับการอ่านแต่ละไฟล์
+            const fileReadPromises = files.map(file => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+
+                    // ตั้งค่า callback เมื่อการอ่านเสร็จสมบูรณ์
+                    reader.onloadend = () => {
+                        const binaryData = reader.result;
+                        resolve(binaryData);
+                    };
+
+                    // ตั้งค่า callback เมื่อเกิดข้อผิดพลาดในการอ่าน
+                    reader.onerror = () => {
+                        reject(new Error('Error reading file.'));
+                    };
+
+                    // อ่านไฟล์ในรูปแบบไบนารี
+                    reader.readAsBinaryString(file.file);
+                });
+            });
+
+            try {
+                // รอการอ่านข้อมูลจากทุกไฟล์
+                const binaryDataArray = await Promise.all(fileReadPromises);
+
+                // นำข้อมูลจากทุกไฟล์มาต่อกันเป็นไบนารีเดียว
+                const binData = binaryDataArray.join('');
+
+                return binData;
+            } catch (error) {
+                // จัดการข้อผิดพลาดที่เกิดขึ้นในการอ่านไฟล์
+                console.error('Error converting files to binary:', error);
+                throw error;
+            }
+        }
+
+    </script>
+
+
+    <script src="assets/js/main.js"></script>
+</body>
+
+</html>
